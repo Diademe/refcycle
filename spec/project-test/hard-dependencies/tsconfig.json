@@ -1,0 +1,9 @@
+{
+    "files": [
+        "./index.ts"
+    ],
+    "compilerOptions": {
+        "experimentalDecorators": true,
+        "target": "es6"
+    }
+}

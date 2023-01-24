@@ -1,0 +1,5 @@
+dist
+*.js
+*.map.js
+node_modules
+/.vscode
