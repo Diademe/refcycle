@@ -1,6 +1,6 @@
 {
   "name": "refcycle",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "ordonnancement of import in a typescript project",
   "main": "src/main.ts",
   "repository": "https://github.com/Diademe/refcycle",
