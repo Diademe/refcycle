@@ -1,6 +1,6 @@
 *.js.map
-/spec
-/src
+/spec/*
+/src/*
 node_modules
 /.vscode
 .editorconfig
