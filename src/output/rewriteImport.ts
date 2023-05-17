@@ -23,7 +23,8 @@ function relative(from: string, to: string) {
         const toFile = paths.parse(to).name;
         to = toPosixPath(paths.dirname(to));
         from = toPosixPath(paths.dirname(from));
-        return "./" + paths.posix.join(paths.posix.relative(from, to), toFile);
+        const res = paths.posix.join(paths.posix.relative(from, to), toFile);
+        return res[0] === "." ? res : `./${res}`;
     }
     return toPosixPath(to);
 }
