@@ -21,6 +21,7 @@ export class GraphToken {
     public addTokenToFile(
         tokenName: string,
         tokenIsLibrary: boolean,
+        tokenIsExcluded: boolean,
         tokenIsUsed: boolean,
         tokenDeclarationPath: string,
         tokenSymbol: ts.Symbol,
@@ -34,6 +35,7 @@ export class GraphToken {
             token = new Token(
                 tokenName,
                 tokenIsLibrary,
+                tokenIsExcluded,
                 tokenIsUsed,
                 tokenDeclarationPath,
                 tokenSymbol

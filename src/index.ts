@@ -9,6 +9,7 @@ import { createParserFromTsconfig } from "./createParser";
 import { isCyclic, SCC } from "./graph";
 import { reverseMap, toPosixPath } from "./utils";
 import { error, info, debug } from "./log";
+import { regex } from "./exclusion";
 
 
 const startingArgumentIndex = 2;
@@ -16,7 +17,7 @@ const startingArgumentIndex = 2;
 if (process.argv[startingArgumentIndex] === "--help" || process.argv.length - startingArgumentIndex < 3) {
     info(
 `Ref cycle usage:
-npm run start -- <tsConfigPath> <globalNamespacePath> <format> [graphHardDependenciesPath]`
+npm run start -- <tsConfigPath> <globalNamespacePath> <format> [exclusion] [graphHardDependenciesPath]`
 );
     exit();
 }
@@ -24,7 +25,10 @@ npm run start -- <tsConfigPath> <globalNamespacePath> <format> [graphHardDepende
 const tsConfigPath = process.argv[startingArgumentIndex];
 const globalNamespacePath = process.argv[startingArgumentIndex + 1];
 const formatImport = process.argv[startingArgumentIndex + 2] === "true";
-const graphHardDependenciesPath = process.argv[startingArgumentIndex + 3];
+
+const exclusionArg = process.argv[startingArgumentIndex + 3];
+if (exclusionArg && exclusionArg !== "null") regex.val = new RegExp(exclusionArg);
+const graphHardDependenciesPath = process.argv[startingArgumentIndex + 4];
 
 if (!existsSync(tsConfigPath)) {
     error("tsconfig dosent exist : " + tsConfigPath + EOL);

@@ -7,6 +7,7 @@ import { trimQuote } from "./utils";
 import { error, debug } from "./log";
 import { info } from "console";
 import { normalize } from "path";
+import { exclusion } from "./exclusion";
 
 export interface IImport {
     isLibrary: boolean;
@@ -208,8 +209,9 @@ export class ParseProject extends AstTraversal {
                 );
                 const isLibrary = moduleNameResolver.resolvedModule?.isExternalLibraryImport ?? false;
                 const modulePath = moduleNameResolver.resolvedModule?.resolvedFileName ?? "";
+                const isExcluded = exclusion(modulePath);
 
-                if (!isLibrary && globalNamespaceNormalized !== normalize(modulePath)) {
+                if (!isLibrary && !isExcluded && globalNamespaceNormalized !== normalize(modulePath)) {
                     info(`[warning] ${modulePath} isn't imported from ${globalNamespace} in ${sourceFile.fileName}`);
                 }
                 importOfCurrentFiles.push({
@@ -266,9 +268,11 @@ export class ParseProject extends AstTraversal {
                     }
                     exportedSymbolModulePath = exportedSymbol.getDeclarations()[0].getSourceFile().fileName;
                 }
+                const isExcluded = exclusion(exportedSymbol.getDeclarations()[0].getSourceFile().fileName);
                 graphToken.addTokenToFile(
                     exportedSymbol.getName(),
                     isLibrary,
+                    isExcluded,
                     isUsed,
                     exportedSymbolModulePath,
                     exportedSymbol,

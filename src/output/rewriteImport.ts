@@ -11,6 +11,8 @@ import { EOL } from "os";
 import { toPosixPath } from "../utils";
 import { IImport } from "../parse";
 import { info } from "../log";
+import { Token } from "../token";
+import { exclusion } from "../exclusion";
 
 
 /**
@@ -140,17 +142,43 @@ export class RewriteImport {
         if (match !== null) {
             insertImportsEnd += match[0].length;
         }
-        let importsText: string[] = [];
+        const importsText: string[] = [];
         const libraryImports = imports.filter(i => i.isLibrary).sort((a, b) => a.path.localeCompare(b.path));
-        importsText = importsText.concat(libraryImports.map((i) => RewriteImport.formatImport(i.text)));
+        importsText.push(...libraryImports.map((i) => RewriteImport.formatImport(i.text)));
+
+        const indent = "    ";
+        const emptyLineMarker = "/*!--empty-line--!*/";
+        const emptyLineRegexp = /\/\*!--empty-line--!\*\//g;
+
+        const excludedImports = Array.from(
+            this.graphTokenAllDependency.getImportedTokenByModule(localModulePath).values()
+        ).filter(i => !i.isLibrary && i.isExcluded);
+        if (excludedImports.length > 0) {
+            const groupByPath = new Map<string, Token<ts.Symbol>[]>(excludedImports.map(e => [e.declarationPath, []]));
+            for (const e of excludedImports)
+            {
+                groupByPath.get(e.declarationPath).push(e);
+            }
+            importsText.push(emptyLineMarker);
+
+            for (const [path, tokens] of groupByPath)
+            {
+                const excludedImportsFormatted = tokens
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(e => e.name)
+                        .join(", ");
+                const relativePath = relative(localModulePath, path);
+                const importText = `import { ${excludedImportsFormatted} } from "${relativePath}";`;
+                importsText.push(importText);
+            }
+        }
 
         const localImports = Array.from(
             this.graphTokenAllDependency.getImportedTokenByModule(localModulePath).values()
-        ).filter(i => !i.isLibrary);
+        ).filter(i => !i.isLibrary && !i.isExcluded);
         if (localImports.length > 0) {
-            const indent = "    ";
-            importsText.push("/*!--empty-line--!*/");
-            importsText.push("import {");
+            importsText.push(emptyLineMarker);
+            importsText.push("import { ");
             const localImportsFormatted = localImports
                     .sort((a, b) => a.name.localeCompare(b.name))
                     .map((t) => indent + t.name + ",");
@@ -159,25 +187,25 @@ export class RewriteImport {
             const lastImport = localImportsFormatted[iLast];
             localImportsFormatted[iLast] = lastImport.substring(0, lastImport.length - 1);
 
-            importsText = importsText.concat(localImportsFormatted);
+            importsText.push(...localImportsFormatted);
             importsText.push(`} from "${relative(localModulePath, this.globalNamespacePath)}";`);
         }
 
-        if (libraryImports.length > 0 || localImports.length > 0) {
-            importsText.push("/*!--empty-line--!*/");
-            importsText.push("/*!--empty-line--!*/");
+        if (libraryImports.length + excludedImports.length + localImports.length > 0) {
+            importsText.push(emptyLineMarker, emptyLineMarker);
         }
 
         const importsTextFormatted = format(localModulePath, importsText.join(EOL)) + EOL;
         return replace(importsTextFormatted, fullSource, insertImportsStart, insertImportsEnd)
-            .replace(/\/\*!--empty-line--!\*\//g, "");
+            .replace(emptyLineRegexp, "");
     }
 
     private rewriteImportInAllModules(): void {
         const localModulesPath = this.graphTokenAllDependency.getLocalModulesPath();
         // let i = 1;
         for (const localModulePath of localModulesPath) {
-            if (this.graphTokenAllDependency.getImportedTokenByModule(localModulePath).size !== 0) {
+            const tokenInFile = this.graphTokenAllDependency.getImportedTokenByModule(localModulePath);
+            if (tokenInFile.size !== 0) {
                 // process.stdout.clearLine(0);
                 // process.stdout.cursorTo(0);
                 // log(`writing import (${i} / ${localModulesPath.length}) ` + localModulePath);
@@ -212,6 +240,7 @@ export class RewriteImport {
         const hardDependencyOrder = aTopologicalOrder(this.graphTokenHardDependency.getGraph());
         for (const modulePath of hardDependencyOrder
             .filter(m => !m.includes("node_modules"))
+            .filter(m => !exclusion(m))
             .filter(m => m !== this.globalNamespacePath)
         ) {
             exportsHard.push(this.createExport(modulePath));
@@ -231,6 +260,7 @@ export class RewriteImport {
         const softDependencyOrder = this.graphTokenAllDependency.getLocalModulesPath().sort();
         for (const modulePath of softDependencyOrder
             .filter(m => !m.includes("node_modules"))
+            .filter(m => !exclusion(m))
             .filter(m => m !== this.globalNamespacePath)
             .filter(m => !hardDependency.has(m))
         ) {
