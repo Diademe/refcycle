@@ -38,7 +38,7 @@ Backup your files before executing this command.
 * **tsConfigPath** (required): the full path of the `tsconfig.json` (or `tsconfig.app.json`) of the project. The file must exist
 * **globalNamespacePath** (required): the full path of the file that will order the imports
 * **format** (required): format imports in each file (Experimental, set it to false if unsure)
-* **exclusion** (optional): format imports in each file (set it to null if unsure), set to "\\.(component|module)\\.ts$" to exclude component and module from global namespace (you should set format to true if those file are already in the global namespace)
+* **exclusion** (optional): format imports in each file (set it to null if unsure), set to "\.(component|module)\.ts$" to exclude component and module from global namespace (you should set format to true if those file are already in the global namespace)
 * **graphHardDependenciesPath** (optional): if there are some cycles in the graph of hard dependencies, this program will
 generate a .gml file highlighting the strongly connected component that you must break. .gml file can be opened with
 [yEd](https://www.yworks.com/products/yed).
