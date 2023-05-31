@@ -6,8 +6,6 @@
   "repository": "https://github.com/Diademe/refcycle",
   "scripts": {
     "build": "tsc --project src/tsconfig.app.json",
-    "prestart": "npm run build",
-    "start": "ts-node --project ./src/tsconfig.app.json ./src/index.ts",
     "lint": "npm run lint:app && npm run lint:test",
     "lint:app": "eslint -c .eslintrc.js --ext .ts src",
     "lint:test": "eslint -c .eslintrc.js --ext .ts spec",

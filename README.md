@@ -30,7 +30,9 @@ const A = AMixin(); // global scope doesn't depend on B as content of `AMixin` i
 Backup your files before executing this command.
 
     ```bash
-    npm run start -- <tsConfigPath> <globalNamespacePath> <format> [exclusion] [graphHardDependenciesPath]
+    npm ci
+    npm run build
+    node ./dist/index.js <tsConfigPath> <globalNamespacePath> <format> [exclusion] [graphHardDependenciesPath]
     ```
 
 * **tsConfigPath** (required): the full path of the `tsconfig.json` (or `tsconfig.app.json`) of the project. The file must exist

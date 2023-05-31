@@ -17,7 +17,7 @@ const startingArgumentIndex = 2;
 if (process.argv[startingArgumentIndex] === "--help" || process.argv.length - startingArgumentIndex < 3) {
     info(
 `Ref cycle usage:
-npm run start -- <tsConfigPath> <globalNamespacePath> <format> [exclusion] [graphHardDependenciesPath]`
+node ./dist/index.js <tsConfigPath> <globalNamespacePath> <format> [exclusion] [graphHardDependenciesPath]`
 );
     exit();
 }
