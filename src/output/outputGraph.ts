@@ -14,18 +14,18 @@ import { getAColor } from "../utils";
  * @param scc
  * @param reverseScc
  */
-export function graph2gml<N, T>(G: Graph<N, Token<T>>, path: string, scc: Map<N, number>, reverseScc: Map<number, Set<N>>): void {
+export function graph2gml<N extends { toString: () => string}, T>(G: Graph<N, Token<T>>, path: string, scc: Map<N, number>, reverseScc: Map<number, Set<N>>): void {
     const res: string[] = [];
     const colorMap = new Map<N, number>();
     const sccIndexToSccColor = new Map<number, number>();
     const colorIndexForUnitScc = 1; // skip back color
     let colorIndex = colorIndexForUnitScc + 1;
     for (const [node, sccIndex] of scc) {
-        const sizeScc = reverseScc.get(sccIndex).size;
+        const sizeScc = reverseScc.get(sccIndex)!.size;
         if (sizeScc > 1) {
             if (sccIndexToSccColor.has(sccIndex)) {
                 // already seen scc, find it's color
-                colorMap.set(node, sccIndexToSccColor.get(sccIndex));
+                colorMap.set(node, sccIndexToSccColor.get(sccIndex)!);
             }
             else {
                 // new scc, new colorIndex
@@ -52,7 +52,7 @@ export function graph2gml<N, T>(G: Graph<N, Token<T>>, path: string, scc: Map<N,
         res.push(`    id ${i}`);
         res.push(`    label "${basename(node.toString()).replace(/\.[^.]*$/, "")}"`);
         res.push("    graphics [");
-        res.push(`      fill "${getAColor(colorMap.get(node))}"`);
+        res.push(`      fill "${getAColor(colorMap.get(node)!)}"`);
         res.push("    ]");
         res.push("  ]");
         i++;
@@ -71,7 +71,7 @@ export function graph2gml<N, T>(G: Graph<N, Token<T>>, path: string, scc: Map<N,
             res.push("    graphics [");
             res.push('      targetArrow "standard"');
             if (scc.get(from) === scc.get(to)) {
-                res.push(`      fill "${getAColor(colorMap.get(from))}"`);
+                res.push(`      fill "${getAColor(colorMap.get(from)!)}"`);
             }
             res.push("    ]");
             res.push("  ]");

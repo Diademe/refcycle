@@ -29,7 +29,7 @@ export function reverseMap<T>(result: Map<T, number>): Map<number, Set<T>> {
         if (!reversResult.has(sccIndex)) {
             reversResult.set(sccIndex, new Set());
         }
-        reversResult.get(sccIndex).add(node);
+        reversResult.get(sccIndex)!.add(node);
     }
 
     return reversResult;

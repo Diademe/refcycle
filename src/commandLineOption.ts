@@ -9,6 +9,6 @@ const host: ts.ParseConfigHost = {
 };
 
 export function getCommandLineOption(tsconfigPath: string): ts.ParsedCommandLine {
-    const config: unknown = JSON.parse(ts.sys.readFile(tsconfigPath));
+    const config: unknown = JSON.parse(ts.sys.readFile(tsconfigPath)!);
     return ts.parseJsonConfigFileContent(config, host, dirname(tsconfigPath));
 }

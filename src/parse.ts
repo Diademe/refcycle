@@ -47,8 +47,8 @@ export class ParseProject extends AstTraversal {
     /**
      * get the name of the module from which the symbol is exported (no recursion in case of re export)
      */
-    private static getModuleNameFromImportedSymbol(symbol: ts.Symbol): string {
-        let parent: ts.Node = symbol.declarations[0];
+    private static getModuleNameFromImportedSymbolDeclaration(declarations: ts.Declaration[]): string {
+        let parent: ts.Node = declarations[0];
         while (!(ts.isImportDeclaration(parent) || ts.isImportEqualsDeclaration(parent))) {
             parent = parent.parent;
         }
@@ -248,17 +248,17 @@ export class ParseProject extends AstTraversal {
      */
     private addDependencyIfNodeValide(node: ts.Node, sourceFile: ts.SourceFile, graphToken: GraphToken, isUsed: boolean) {
         const symbol = this.checker.getSymbolAtLocation(node);
-        if (ParseProject.isImported(symbol)) { // if the symbol is used
+        if (symbol && ParseProject.isImported(symbol)) { // if the symbol is used
             const exportedSymbol = this.realSymbol(symbol);
             const moduleNameResolver = this.moduleNameResolver(
-                ParseProject.getModuleNameFromImportedSymbol(symbol),
+                ParseProject.getModuleNameFromImportedSymbolDeclaration((symbol.declarations)!),
                 sourceFile.fileName
             );
-            const isLibrary = moduleNameResolver.resolvedModule?.isExternalLibraryImport;
+            const isLibrary = moduleNameResolver.resolvedModule?.isExternalLibraryImport ?? false;
             if (!this.checker.isUnknownSymbol(exportedSymbol)) {
-                let exportedSymbolModulePath = moduleNameResolver.resolvedModule.resolvedFileName;
+                let exportedSymbolModulePath = moduleNameResolver.resolvedModule?.resolvedFileName ?? "";
                 if (!isLibrary) {
-                    const numberOfFilesDeclaration = new Set(exportedSymbol.getDeclarations().map(d => d.getSourceFile().fileName)).size;
+                    const numberOfFilesDeclaration = new Set(exportedSymbol.getDeclarations()!.map(d => d.getSourceFile().fileName)).size;
                     if (numberOfFilesDeclaration === 0) {
                         throw new Error(`symbol ${symbol.getName()} alias ${exportedSymbol.getName()} as 0 declarations`);
                     }
@@ -266,9 +266,9 @@ export class ParseProject extends AstTraversal {
                     if (numberOfFilesDeclaration > 1) {
                         info(EOL + `symbol ${symbol.getName()} alias ${exportedSymbol.getName()} as ${numberOfFilesDeclaration} declarations file location` + EOL);
                     }
-                    exportedSymbolModulePath = exportedSymbol.getDeclarations()[0].getSourceFile().fileName;
+                    exportedSymbolModulePath = exportedSymbol.getDeclarations()![0].getSourceFile().fileName;
                 }
-                const isExcluded = exclusion(exportedSymbol.getDeclarations()[0].getSourceFile().fileName);
+                const isExcluded = exclusion(exportedSymbol.getDeclarations()![0].getSourceFile().fileName);
                 graphToken.addTokenToFile(
                     exportedSymbol.getName(),
                     isLibrary,
@@ -281,7 +281,7 @@ export class ParseProject extends AstTraversal {
             }
             else if (!isLibrary) {
                 const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-                error(EOL + `can not parse ${symbol.getName()} in file ${sourceFile.fileName}:${line}:${character}` + EOL);
+                error(EOL + `can not parse ${symbol?.getName()} in file ${sourceFile.fileName}:${line}:${character}` + EOL);
             }
         }
     }

@@ -42,12 +42,12 @@ export class Graph<T, D = unknown> {
         this.addNode(from);
         this.addNode(to);
         if (this.selfLoop || from !== to) {
-            const u = this.edges.get(from);
+            const u = this.edges.get(from)!;
             if (!u.has(to)) {
                 u.set(to, new Set());
             }
             if (data !== undefined) {
-                u.get(to).add(data);
+                u.get(to)!.add(data);
             }
         }
     }
@@ -58,7 +58,7 @@ export class Graph<T, D = unknown> {
      * @param to
      */
     public getDataFromEdge(from: T, to: T): Set<D> {
-        return this.edges.get(from).get(to);
+        return this.edges.get(from)!.get(to)!;
     }
 
     /**
@@ -67,7 +67,7 @@ export class Graph<T, D = unknown> {
      */
     public getEdgeDataFromNode(from: T): Set<D> {
         const res = new Set<D>();
-        for (const dataSet of this.edges.get(from).values()) {
+        for (const dataSet of this.edges.get(from)!.values()) {
             for (const d of dataSet) {
                 res.add(d);
             }
@@ -87,14 +87,14 @@ export class Graph<T, D = unknown> {
      * @param n
      */
     public getAdj(n: T): Set<T> {
-        return new Set(this.edges.get(n).keys());
+        return new Set(this.edges.get(n)!.keys());
     }
 
     /**
      * return true if (`u`, `v`) is in graph
      */
     public edgeExist(u: T, v: T): boolean {
-        return this.edges.get(u).has(v);
+        return this.edges.get(u)!.has(v);
     }
 
     /**
@@ -169,7 +169,7 @@ export function SCC<T, D>(G: Graph<T, D>): Map<T, number> {
     visited.clear();
 
     while (stack.length > 0) {
-        const v: T = stack.pop();
+        const v: T = stack.pop()!;
         if (!visited.has(v)) {
             DFSUtil(v);
             CCNumber++;

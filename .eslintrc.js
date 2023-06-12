@@ -20,6 +20,7 @@ module.exports = {
         "deprecation"
     ],
     "rules": {
+        "@typescript-eslint/no-non-null-assertion": "off",
         "@typescript-eslint/adjacent-overload-signatures": "error",
         "@typescript-eslint/array-type": [
             "error",

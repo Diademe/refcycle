@@ -132,7 +132,7 @@ export class RewriteImport {
 
     private static readonly singleLineMaxLength: number = 80;
     private static travers(node: ts.Node, indent: string): string {
-        if (ts.isImportDeclaration(node)) {
+        if (ts.isImportDeclaration(node) && node.importClause) {
             const file = node.moduleSpecifier.getText();
             const importClause = node.importClause.name?.getText() ?? null; // import uuid from "uuid"
 
@@ -142,7 +142,7 @@ export class RewriteImport {
             if (namedBinding && ts.isNamedImports(namedBinding)) { // import { A1, A2 } from "./file";
                 for (const elt of namedBinding.elements) {
                     let imp = elt.name.getText();
-                    if (elt.propertyName ?? false) { // import { A3 as A3Alias } from "./file";
+                    if (elt.propertyName) { // import { A3 as A3Alias } from "./file";
                         imp = `${elt.propertyName.getText()} as ${imp}`;
                     }
                     bindings.push(imp);
@@ -241,7 +241,7 @@ export class RewriteImport {
             const groupByPath = new Map<string, Token<ts.Symbol>[]>(excludedImports.map(e => [e.declarationPath, []]));
             for (const e of excludedImports)
             {
-                groupByPath.get(e.declarationPath).push(e);
+                groupByPath.get(e.declarationPath)!.push(e);
             }
             importsText.push(emptyLineMarker);
 
@@ -296,7 +296,7 @@ export class RewriteImport {
                 // process.stdout.cursorTo(0);
                 // log(`writing import (${i} / ${localModulesPath.length}) ` + localModulePath);
                 let sourceText = readFileSync(localModulePath).toString();
-                sourceText = this.replaceImports(this.filesToImportsNodes.get(localModulePath), sourceText, localModulePath);
+                sourceText = this.replaceImports(this.filesToImportsNodes.get(localModulePath)!, sourceText, localModulePath);
                 if (this.addLogsLoaded) {
                     const append = "console.log(\"" + basename(localModulePath) + " loaded\");";
                     sourceText = sourceText.trimEnd();

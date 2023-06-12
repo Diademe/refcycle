@@ -28,7 +28,7 @@ export class GraphToken {
         /** path of the module where this token is used */ absoluteFilePath: string): void {
         let token: Token<ts.Symbol>;
         if (this.symbolToToken.has(tokenSymbol)) {
-            token = this.symbolToToken.get(tokenSymbol);
+            token = this.symbolToToken.get(tokenSymbol)!;
             token.isUsed = token.isUsed || tokenIsUsed;
         }
         else {

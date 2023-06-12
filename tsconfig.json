@@ -9,7 +9,7 @@
     "target": "es6",
     "module": "commonJs",
     "stripInternal": true,
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "experimentalDecorators": true,
     "noEmitHelpers": false,
     "declaration": true,
