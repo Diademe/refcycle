@@ -1,4 +1,4 @@
-import ts from "typescript";
+import ts, { ScriptTarget } from "typescript";
 import { EOL } from "os";
 
 import { GraphToken } from "./graphToken";
@@ -20,6 +20,7 @@ export interface IImport {
 /** Generate documentation for all classes in a set of .ts files */
 export class ParseProject extends AstTraversal {
     private checker: ts.TypeChecker;
+    public target: ScriptTarget;
 
     /**
      * @param fileNames an array of root files from which the program start
@@ -32,6 +33,7 @@ export class ParseProject extends AstTraversal {
         super(fileNames, compilerOptions);
         // Get the checker, we will use it to find more about classes
         this.checker = this.program.getTypeChecker();
+        this.target = compilerOptions.target ?? ScriptTarget.ESNext;
     }
 
     private static getImportPath(node: ts.ImportDeclaration | ts.ImportEqualsDeclaration): string {

@@ -1,4 +1,4 @@
-import ts from "typescript";
+import ts, { ScriptTarget } from "typescript";
 import paths from "path";
 
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from "fs";
@@ -198,11 +198,11 @@ export class RewriteImport {
             exit();
         }
     }
-    private static formatImport(importText: string, indent: string): string {
+    private static formatImport(importText: string, indent: string, target: ScriptTarget): string {
         const sourceFile = ts.createSourceFile(
             "fileName",
             importText,
-            ts.ScriptTarget.ESNext, // todo not hard coded
+            target,
             /* setParentNodes */ true
         );
         return this.travers(sourceFile.statements[0], indent);
@@ -214,7 +214,7 @@ export class RewriteImport {
      * @param fullSource source text
      * @param localModulePath path to the source file
      */
-    private replaceImports(imports: IImport[], fullSource: string, localModulePath: string): string {
+    private replaceImports(imports: IImport[], fullSource: string, localModulePath: string, target: ScriptTarget): string {
         let insertImportsStart = imports.reduce((acc, i) => Math.min(acc, i.start), Number.MAX_SAFE_INTEGER);
         let insertImportsEnd = imports.reduce((acc, i) => Math.max(acc, i.end), Number.MIN_SAFE_INTEGER);
         if (insertImportsStart === Number.MAX_SAFE_INTEGER) {
@@ -229,7 +229,7 @@ export class RewriteImport {
         const indent = "    ";
         const importsText: string[] = [];
         const libraryImports = imports.filter(i => i.isLibrary).sort((a, b) => a.path.localeCompare(b.path));
-        importsText.push(...libraryImports.map((i) => RewriteImport.formatImport(i.text, indent)));
+        importsText.push(...libraryImports.map((i) => RewriteImport.formatImport(i.text, indent, target)));
 
         const emptyLineMarker = "/*!--empty-line--!*/";
         const emptyLineRegexp = /\/\*!--empty-line--!\*\//g;
@@ -274,7 +274,7 @@ export class RewriteImport {
 
             currentLocalImport.push(...localImportsFormatted);
             currentLocalImport.push(`} from "${relative(localModulePath, this.globalNamespacePath)}";`);
-            importsText.push(RewriteImport.formatImport(currentLocalImport.join(" "), indent));
+            importsText.push(RewriteImport.formatImport(currentLocalImport.join(" "), indent, target));
         }
 
         if (libraryImports.length + excludedImports.length + localImports.length > 0) {
@@ -286,7 +286,7 @@ export class RewriteImport {
             .replace(emptyLineRegexp, "");
     }
 
-    private rewriteImportInAllModules(): void {
+    private rewriteImportInAllModules(target: ScriptTarget): void {
         const localModulesPath = this.graphTokenAllDependency.getLocalModulesPath();
         // let i = 1;
         for (const localModulePath of localModulesPath) {
@@ -296,7 +296,7 @@ export class RewriteImport {
                 // process.stdout.cursorTo(0);
                 // log(`writing import (${i} / ${localModulesPath.length}) ` + localModulePath);
                 let sourceText = readFileSync(localModulePath).toString();
-                sourceText = this.replaceImports(this.filesToImportsNodes.get(localModulePath)!, sourceText, localModulePath);
+                sourceText = this.replaceImports(this.filesToImportsNodes.get(localModulePath)!, sourceText, localModulePath, target);
                 if (this.addLogsLoaded) {
                     const append = "console.log(\"" + basename(localModulePath) + " loaded\");";
                     sourceText = sourceText.trimEnd();
@@ -380,9 +380,9 @@ export class RewriteImport {
         );
     }
 
-    public execute(): void {
+    public execute(target: ScriptTarget): void {
         if (this.formatImport) {
-            this.rewriteImportInAllModules();
+            this.rewriteImportInAllModules(target);
         }
         if (existsSync(this.globalNamespacePath)) {
             unlinkSync(this.globalNamespacePath);

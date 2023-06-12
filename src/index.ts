@@ -79,4 +79,4 @@ const rw = new RewriteImport(
     toPosixPath(globalNamespacePath),
     formatImport
 );
-rw.execute();
+rw.execute(parser.target);
