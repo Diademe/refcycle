@@ -172,19 +172,26 @@ export class RewriteImport {
                     }
                     result.push(bindingFormatted);
                 }
-                if (multiLine) {
-                    return [
-                        "import",
-                            result.join("," + EOL),
-                        `from "${file}";`
-                    ].join(EOL);
+                // do not add the import if no token is imported
+                // this case may occurs if every token are removed from global namespace
+                if (result.length > 0) {
+                    if (multiLine) {
+                        return [
+                            "import",
+                                result.join("," + EOL),
+                            `from ${file};`
+                        ].join(EOL);
+                    }
+                    else {
+                        return [
+                            "import",
+                                result.join(", "),
+                            ` from ${file};`
+                        ].join("");
+                    }
                 }
                 else {
-                    return [
-                        "import",
-                            result.join(", "),
-                        ` from "${file}";`
-                    ].join("");
+                    return "";
                 }
             };
             const singleLine = renderImport(false);
