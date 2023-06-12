@@ -151,43 +151,48 @@ export class RewriteImport {
                 }
             }
             const renderImport = (multiLine: boolean): string => {
-                const result: string[] = [];
-                if (importClause !== null) {
-                    result.push((multiLine ? indent : "") + importClause);
-                }
-                if (namespaceImport !== null) {
-                    result.push((multiLine ? indent : "") + namespaceImport);
-                }
-                if (bindings.length > 1) {
-                    let bindingFormatted = "";
-                    if (multiLine) {
-                        bindingFormatted = [
-                            result.push(indent + "{"),
-                            result.push(bindings.map(b => indent + indent + b).join(",")),
-                            result.push(indent + "}")
-                        ].join(EOL);
-                    }
-                    else {
-                        bindingFormatted = "{ " + bindings.join(", ") + " }";
-                    }
-                    result.push(bindingFormatted);
-                }
                 // do not add the import if no token is imported
                 // this case may occurs if every token are removed from global namespace
-                if (result.length > 0) {
-                    if (multiLine) {
-                        return [
-                            "import",
-                                result.join("," + EOL),
-                            `from ${file};`
-                        ].join(EOL);
+                if (importClause || namespaceImport || bindings.length > 0) {
+                    if (!importClause && !namespaceImport)
+                    {
+                        if (multiLine) {
+                            return [
+                                "import",
+                                "{",
+                                    bindings.map(b => indent + b).join("," + EOL),
+                                `} from ${file};`
+                            ].join(EOL);
+                        }
+                        else {
+                            return "import { " + bindings.join(", ") + ` } from ${file};`;
+                        }
                     }
                     else {
-                        return [
-                            "import",
-                                result.join(", "),
-                            ` from ${file};`
-                        ].join("");
+                        const result: string[] = [];
+                        if (importClause !== null) {
+                            result.push((multiLine ? indent : "") + importClause);
+                        }
+                        if (namespaceImport !== null) {
+                            result.push((multiLine ? indent : "") + namespaceImport);
+                        }
+                        if (bindings.length > 0) {
+                            result.push(...[
+                                indent + "{",
+                                bindings.map(b =>  indent + indent + b).join("," + EOL),
+                                indent + "}"
+                            ]);
+                        }
+                        if (multiLine) {
+                            return [
+                                "import",
+                                result.join(EOL),
+                                `from ${file};`
+                            ].join(EOL);
+                        }
+                        else {
+                            return "import " + result.join(", ") + ` from ${file};`;
+                        }
                     }
                 }
                 else {
