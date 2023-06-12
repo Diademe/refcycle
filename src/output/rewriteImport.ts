@@ -197,6 +197,10 @@ export class RewriteImport {
             const singleLine = renderImport(false);
             return singleLine.length > RewriteImport.singleLineMaxLength ? renderImport(true) : singleLine;
         }
+        if (ts.isImportDeclaration(node) && !node.importClause) { // import "filename";
+            const identifier = node.moduleSpecifier.getText();
+            return `import ${identifier};`;
+        }
         else if (ts.isImportEqualsDeclaration(node)) {
             const identifier = node.name.getText();
             const required = node.moduleReference.getText();
