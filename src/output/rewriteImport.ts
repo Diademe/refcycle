@@ -131,6 +131,8 @@ export class RewriteImport {
     ) { }
 
     private static readonly singleLineMaxLength: number = 80;
+
+    /** read import, using AST, and format them */
     private static travers(node: ts.Node, indent: string): string {
         if (ts.isImportDeclaration(node) && node.importClause) {
             const file = node.moduleSpecifier.getText();
