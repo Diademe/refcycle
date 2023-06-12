@@ -10,9 +10,10 @@ import { EOL } from "os";
 
 import { toPosixPath } from "../utils";
 import { IImport } from "../parse";
-import { info } from "../log";
+import { info, error } from "../log";
 import { Token } from "../token";
 import { exclusion } from "../exclusion";
+import { exit } from "process";
 
 
 /**
@@ -81,10 +82,26 @@ class LanguageServiceHost implements ts.LanguageServiceHost {
     fileExists = existsSync;
 
 }
+
+/** replace text[start...end] by inText */
 function replace(text: string, inText: string, start: number, end: number) {
     const head = inText.slice(0, start);
     const tail = inText.slice(end);
     return `${head}${text}${tail}`;
+}
+
+/** replace text[start...end] by inText, trim text[0...start] */
+function replaceTrim(text: string, inText: string, start: number, end: number) {
+    const head = inText.slice(0, start).trimEnd();
+    const tail = inText.slice(end);
+    const result: string[] = [];
+    if (head.length > 0) {
+        result.push(head);
+        result.push(""); // add a new line under copyright
+    }
+    if (text.length > 0) result.push(text);
+    if (tail.length > 0) result.push(tail);
+    return result.join(EOL);
 }
 
 function format(fileName: string, text: string, options = formatCodeSettings): string {
@@ -113,15 +130,82 @@ export class RewriteImport {
         private addLogsLoaded: boolean = false
     ) { }
 
-    private static formatImport(importText: string): string {
-        return importText.trim()
-            .replace(/\r?\n/g, "")
-            .replace(/\s+/g, " ")
-            .replace(/^import\s?{/, "import{###")
-            .replace(/(?<!,)}\s?(?=from[^}]*$)/, ",}")
-            .replace(/,/g, ",###")
-            .replace(/###/g, EOL)
-            .replace(/'/g, '"');
+    private static readonly singleLineMaxLength: number = 80;
+    private static travers(node: ts.Node, indent: string): string {
+        if (ts.isImportDeclaration(node)) {
+            const file = node.moduleSpecifier.getText();
+            const importClause = node.importClause.name?.getText() ?? null; // import uuid from "uuid"
+
+            const namedBinding = node.importClause.namedBindings;
+            const namespaceImport = namedBinding && ts.isNamespaceImport(namedBinding) ? namedBinding.name.getText() : null; // import * as uuid from "uuid"
+            const bindings: string[] = [];
+            if (namedBinding && ts.isNamedImports(namedBinding)) { // import { A1, A2 } from "./file";
+                for (const elt of namedBinding.elements) {
+                    let imp = elt.name.getText();
+                    if (elt.propertyName ?? false) { // import { A3 as A3Alias } from "./file";
+                        imp = `${elt.propertyName.getText()} as ${imp}`;
+                    }
+                    bindings.push(imp);
+                }
+            }
+            const renderImport = (multiLine: boolean): string => {
+                const result: string[] = [];
+                if (importClause !== null) {
+                    result.push((multiLine ? indent : "") + importClause);
+                }
+                if (namespaceImport !== null) {
+                    result.push((multiLine ? indent : "") + namespaceImport);
+                }
+                if (bindings.length > 1) {
+                    let bindingFormatted = "";
+                    if (multiLine) {
+                        bindingFormatted = [
+                            result.push(indent + "{"),
+                            result.push(bindings.map(b => indent + indent + b).join(",")),
+                            result.push(indent + "}")
+                        ].join(EOL);
+                    }
+                    else {
+                        bindingFormatted = "{ " + bindings.join(", ") + " }";
+                    }
+                    result.push(bindingFormatted);
+                }
+                if (multiLine) {
+                    return [
+                        "import",
+                            result.join("," + EOL),
+                        `from "${file}";`
+                    ].join(EOL);
+                }
+                else {
+                    return [
+                        "import",
+                            result.join(", "),
+                        ` from "${file}";`
+                    ].join("");
+                }
+            };
+            const singleLine = renderImport(false);
+            return singleLine.length > RewriteImport.singleLineMaxLength ? renderImport(true) : singleLine;
+        }
+        else if (ts.isImportEqualsDeclaration(node)) {
+            const identifier = node.name.getText();
+            const required = node.moduleReference.getText();
+            return `import ${identifier} = ${required};`;
+        }
+        else {
+            error(`import error : '${node.getText()}'` + EOL);
+            exit();
+        }
+    }
+    private static formatImport(importText: string, indent: string): string {
+        const sourceFile = ts.createSourceFile(
+            "fileName",
+            importText,
+            ts.ScriptTarget.ESNext, // todo not hard coded
+            /* setParentNodes */ true
+        );
+        return this.travers(sourceFile.statements[0], indent);
     }
 
     /**
@@ -142,11 +226,11 @@ export class RewriteImport {
         if (match !== null) {
             insertImportsEnd += match[0].length;
         }
+        const indent = "    ";
         const importsText: string[] = [];
         const libraryImports = imports.filter(i => i.isLibrary).sort((a, b) => a.path.localeCompare(b.path));
-        importsText.push(...libraryImports.map((i) => RewriteImport.formatImport(i.text)));
+        importsText.push(...libraryImports.map((i) => RewriteImport.formatImport(i.text, indent)));
 
-        const indent = "    ";
         const emptyLineMarker = "/*!--empty-line--!*/";
         const emptyLineRegexp = /\/\*!--empty-line--!\*\//g;
 
@@ -178,7 +262,8 @@ export class RewriteImport {
         ).filter(i => !i.isLibrary && !i.isExcluded);
         if (localImports.length > 0) {
             importsText.push(emptyLineMarker);
-            importsText.push("import { ");
+            const currentLocalImport: string[] = [];
+            currentLocalImport.push("import { ");
             const localImportsFormatted = localImports
                     .sort((a, b) => a.name.localeCompare(b.name))
                     .map((t) => indent + t.name + ",");
@@ -187,16 +272,17 @@ export class RewriteImport {
             const lastImport = localImportsFormatted[iLast];
             localImportsFormatted[iLast] = lastImport.substring(0, lastImport.length - 1);
 
-            importsText.push(...localImportsFormatted);
-            importsText.push(`} from "${relative(localModulePath, this.globalNamespacePath)}";`);
+            currentLocalImport.push(...localImportsFormatted);
+            currentLocalImport.push(`} from "${relative(localModulePath, this.globalNamespacePath)}";`);
+            importsText.push(RewriteImport.formatImport(currentLocalImport.join(" "), indent));
         }
 
         if (libraryImports.length + excludedImports.length + localImports.length > 0) {
             importsText.push(emptyLineMarker, emptyLineMarker);
         }
 
-        const importsTextFormatted = format(localModulePath, importsText.join(EOL)) + EOL;
-        return replace(importsTextFormatted, fullSource, insertImportsStart, insertImportsEnd)
+        const importsTextFormatted = format(localModulePath, importsText.join(EOL));
+        return replaceTrim(importsTextFormatted, fullSource, insertImportsStart, insertImportsEnd)
             .replace(emptyLineRegexp, "");
     }
 
@@ -213,11 +299,11 @@ export class RewriteImport {
                 sourceText = this.replaceImports(this.filesToImportsNodes.get(localModulePath), sourceText, localModulePath);
                 if (this.addLogsLoaded) {
                     const append = "console.log(\"" + basename(localModulePath) + " loaded\");";
-                    sourceText.trimEnd();
+                    sourceText = sourceText.trimEnd();
                     sourceText = sourceText.replace(new RegExp(append + '$'), '');
                     sourceText += EOL + append;
                 }
-                sourceText.trimEnd();
+                sourceText = sourceText.trimEnd();
 
                 writeFileSync(localModulePath, sourceText + EOL);
             }
